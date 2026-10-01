@@ -1,5 +1,5 @@
 function escapeHtml(text) {
-  return text
+  return String(text)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -10,18 +10,16 @@ function escapeHtml(text) {
 function renderInline(text) {
   return text
     .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/!\[([^\]]*)\]\(\s*resource:([^)\s]+)\s*\)/g, '<span class="resource-placeholder">🖼️ $1（资源：$2）</span>')
+    .replace(/\[([^\]]*)\]\(\s*\)/g, '<span class="empty-link" title="空链接">$1（空链接）</span>')
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/\*([^*]+)\*/g, '<em>$1</em>')
 }
 
 function listTagFor(line) {
-  if (/^\s*[-*+]\s+/.test(line)) {
-    return 'ul'
-  }
-  if (/^\s*\d+\.\s+/.test(line)) {
-    return 'ol'
-  }
+  if (/^\s*[-*+]\s+/.test(line)) return 'ul'
+  if (/^\s*\d+\.\s+/.test(line)) return 'ol'
   return ''
 }
 
@@ -35,13 +33,8 @@ export function renderCatalpa(source) {
   let i = 0
 
   while (i < lines.length) {
-    const rawLine = lines[i]
-    const line = rawLine.trimEnd()
-
-    if (line.trim() === '') {
-      i += 1
-      continue
-    }
+    const line = lines[i].trimEnd()
+    if (line.trim() === '') { i += 1; continue }
 
     if (/^```/.test(line.trim())) {
       const language = line.trim().slice(3).trim()
@@ -61,7 +54,7 @@ export function renderCatalpa(source) {
     if (/^#{1,6}\s+/.test(line.trim())) {
       const headingLine = line.trim()
       const level = headingLine.match(/^#{1,6}/)[0].length
-      const text = escapeHtml(headingLine.replace(/^#{1,6}\s+/, '').trim())
+      const text = escapeHtml(headingLine.replace(/^#{1,6}\s+/, '').replace(/#+\s*$/, '').trim())
       html.push(`<h${level}>${renderInline(text)}</h${level}>`)
       i += 1
       continue
@@ -87,11 +80,7 @@ export function renderCatalpa(source) {
     const currentListTag = listTagFor(line)
     if (currentListTag) {
       const listItems = []
-      while (i < lines.length) {
-        const nextTag = listTagFor(lines[i])
-        if (nextTag !== currentListTag) {
-          break
-        }
+      while (i < lines.length && listTagFor(lines[i]) === currentListTag) {
         const text = escapeHtml(stripListPrefix(lines[i].trim()))
         listItems.push(`<li>${renderInline(text)}</li>`)
         i += 1
@@ -113,8 +102,7 @@ export function renderCatalpa(source) {
       paragraphLines.push(lines[i].trim())
       i += 1
     }
-    const paragraphText = escapeHtml(paragraphLines.join(' '))
-    html.push(`<p>${renderInline(paragraphText)}</p>`)
+    html.push(`<p>${renderInline(escapeHtml(paragraphLines.join(' ')))}</p>`)
   }
 
   return html.join('\n')

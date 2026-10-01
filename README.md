@@ -1,65 +1,53 @@
-# Catalpa 编辑与预览项目
+# Catalpa 文稿发布校对关口
 
-## 项目介绍
-本项目基于 `Vue 3 + Vite` 实现了一个 Catalpa 文本编辑与实时预览工具。  
-页面采用左右分栏布局，左侧用于输入 Catalpa 内容，右侧用于即时渲染预览，适合本地写作、语法演示和轻量文档编辑场景。
+这是一个基于 **Vue 3 + Vite** 的文稿编辑、校对与发布原型。界面区分“内容已保存、校对通过、已经发布”三类状态；浏览器内的内存关系表模拟后端事务、锁、依赖版本、豁免、资源证据和发布指针。
 
-## 项目功能
-- 支持 Catalpa 文本实时编辑与预览
-- 支持常见语法：标题、列表、引用、分割线、粗体、斜体、链接、代码块
-- 内置“恢复示例”“清空内容”快捷操作
-- 显示行数和字符数统计
-- 使用 `pnpm` 最新版，并配置国内镜像源（`npmmirror`）
-- 支持 `Docker Compose` 一键启动开发环境
+## 功能
 
-## 项目目录结构
-```text
-.
-├── Dockerfile                 # Docker 镜像构建文件
-├── docker-compose.yml         # Docker Compose 启动配置
-├── .dockerignore              # Docker 构建忽略文件
-├── .npmrc                     # pnpm/npm 国内镜像源配置
-├── index.html                 # Vite 入口 HTML
-├── package.json               # 项目依赖与脚本
-├── pnpm-lock.yaml             # pnpm 锁文件
-├── public/                    # 静态资源目录
-├── src/
-│   ├── App.vue                # 主页面（编辑区 + 预览区）
-│   ├── main.js                # Vue 应用入口
-│   ├── style.css              # 全局样式
-│   └── utils/
-│       └── catalpa.js         # Catalpa 渲染逻辑
-└── vite.config.js             # Vite 配置
-```
+- Catalpa 编辑与预览；
+- 逐项定位标题层级跳跃、空链接、打开批注、资源说明和资源撤回；
+- 生成包含正文 AST、资源版本、批注版本、作者权限版本、资源校验证据和豁免的依赖清单；
+- 外部资源预检只保存绑定版本的证据；
+- 发布时在数据库事务内重新执行全部检查，不信任旧的 `passed` 标记或文稿更新时间；
+- 豁免绑定具体问题指纹、文稿版本和规则版本；
+- 幂等键、文档级锁和确定性快照 ID 保证并发点击只产生一个正式快照；
+- 支持模拟并发发布、扫描窗口内修改标题、资源校验迟到、任务重试和数据库中断；
+- 提供 PostgreSQL 参考表结构。
 
-## 项目部署
+## 设计说明
 
-### 1. 本地部署（推荐开发调试）
+完整设计、事务伪代码和测试矩阵见：
+
+- [发布校对关口设计](docs/publishing-gate.md)
+- [PostgreSQL 参考结构](backend/schema.sql)
+- [事务型原型服务](src/services/publishing.js)
+
+核心取舍：不把外部资源扫描放入发布长事务，也不只信任预检结果。预检只负责取得绑定版本的资源证据；发布使用短数据库事务，在同一事务快照中重新锁定并核对文稿、资源、批注、权限、豁免和证据。
+
+## 本地运行
+
 ```bash
-corepack prepare pnpm@latest --activate
-pnpm install
-pnpm dev
+npm install
+npm test
+npm run dev
 ```
 
-启动后访问：`http://localhost:3000`
+访问：`http://localhost:3000`
 
-### 2. Docker 部署（一键启动）
+## 生产构建
+
 ```bash
-docker compose up --build
+npm run build
 ```
 
-启动后访问：`http://localhost:3000`
+## 操作建议
 
-### 3. 生产构建
-```bash
-pnpm build
-```
+初始示例故意包含标题跳跃、两个空链接、打开批注和未完成的资源校验。可按以下步骤得到正式版本：
 
-构建产物输出到 `dist/` 目录，可部署到任意静态资源服务器（如 Nginx、CDN、对象存储静态托管）。
+1. 点击“填入修复样例”并保存；
+2. 在资源卡片中填写说明并保存；
+3. 解决批注；
+4. 点击“执行校对”，等待资源扫描完成；
+5. 校对通过后发布。
 
-## 镜像源说明
-项目根目录 `.npmrc` 已配置：
-
-```ini
-registry=https://registry.npmmirror.com/
-```
+在资源扫描约 700ms 窗口内撤回图片，或在旧校对通过后重开批注、切换作者角色，都能观察到：正文更新时间并未作为依据，依赖清单变化会使旧通过失效。
