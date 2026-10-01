@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# 本地 SQLite 数据与测试临时库
+/data/
+/tmp/

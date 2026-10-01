@@ -7,9 +7,15 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3000",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "server": "node server/index.js",
+    "test:gate": "node --test test/",
+    "start": "node server/index.js"
   },
   "dependencies": {
+    "better-sqlite3": "11.10.0",
+    "bindings": "^1.5.0",
+    "node-addon-api": "^8.9.2",
     "vue": "^3.5.24"
   },
   "devDependencies": {
